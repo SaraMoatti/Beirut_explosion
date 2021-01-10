@@ -429,9 +429,9 @@ let's plot the clustered result with 3 clusters.
 the classification was interpreted through projecting the 3 clusters stak in QGIS on a real photo as per below.
 for example, severe damage can be easily classified as the port area damages were visible.
 
-
+I could not publish the below due to their size, however, they are available on Github and in the report
 ```{r message=FALSE, warning=FALSE, fig.cap=" one classification layer projected on the real explosion shot" ,out.width= "0.3*paperwidth"}
- knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
+ #knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
 
 ```
 
