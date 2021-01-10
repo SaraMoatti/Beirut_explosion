@@ -1018,12 +1018,3 @@ A building age layer can be added to the analysis, unfortunately, the data is no
 
 Focusing on the Beirut Blast areas, we observe that most of the buildings are over 70 years old, therefore, it is worth investigating this in depth and acknowledging that structure, age and conditions of buildings might be correlated with the damages clustering in particular zones when the data is made available.
 
-
-``````{r pressure, echo=FALSE}
-
-```
-
-```
-
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
