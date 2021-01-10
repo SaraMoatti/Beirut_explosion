@@ -1,7 +1,10 @@
-below is a link for the large tiff files
-filed could not be pushed 
-step1: create a folder called "MAXAR_data"
-step2: add the folders "image_differencing" and "Raster tif before and after the blast" should be downloaded 
-step3: place the folders in"MAXAR_DATA" so the R code can work properly
+MAXAR_data files couldn't be uploaded due to their size
 
+Below is a link for the large tiff files:
 https://liveuclac-my.sharepoint.com/:f:/g/personal/ucfnmoa_ucl_ac_uk/EkPwdUSXOT5Oh6fNrVOPMLMBCP9d9etwG-Ko1BNCB6sCnA?e=3xLHV7 
+
+
+step1: create a folder called "MAXAR_data" in the directory
+step2: "image_differencing" and "Raster tif before and after the blast" should be downloaded from the SharePoint platform
+step3: add the folders in"MAXAR_DATA" so the R code can work properly
+
