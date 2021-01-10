@@ -323,3 +323,9 @@ dm3_legend <- tm_shape(UN_habitat_shp) +
 
 density_map3=tmap_arrange(dm3,dm3_legend)
 density_map3
+
+
+stack_after_before_log<-
+  stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
+
+plotRGB(stack_after_before_log,axes=FALSE, stretch="lin")

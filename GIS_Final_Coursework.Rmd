@@ -5,7 +5,7 @@ title: "Beirut Explosion Damage Assessment"
 output: html_document
 ---
 
-This research aims to explore different approaches (point-based analysis on reported damages and SAR imagery change detection) in performing a damage assessment that can guide the emergency response following the Beirut Port explosion that the capital on the 4th of August 2020.
+This research aims to explore different approaches: point-based analysis on reported damages and SAR imagery change detection, in performing a damage assessment that can guide the emergency response following the Beirut Port explosion that hit the capital on the 4th of August 2020.
 
 
 Data included:
@@ -75,7 +75,7 @@ UN_habitat_shp <-
   st_read(here::here("data","unhabitat_zone_data_batch2_2020_08_19", "UNHABITAT_Zone_Data_batch2_2020_08_19.shp")) %>% 
   st_transform(., 22770)
 
-# rename the variable 
+# rename the relevant variable 
 
 UN_habitat_shp<-UN_habitat_shp %>% 
   dplyr::rename( socio_economic_classification = UNHABITAT1 )
@@ -83,8 +83,14 @@ UN_habitat_shp<-UN_habitat_shp %>%
 
 ## Part 1: Damage assessment using high resolution satellite imagery
 
+For this part, I have only included the code in RMarkdown, however, I was not able to run it as files could not be published to Rpubs due their huge size.
+
+The code can be run when all the directory is downloaded with the MAXAR data on your machine.
+
+Link for the directory is available on Github: https://github.com/SaraMoatti/Beirut_explosion 
+
 ```{r message=FALSE, warning=FALSE}
-#try to bring the rgb stack
+# get the MAXAR Satellite image/stack from before the explosion
 #r1_stack<-
 #  stack(here::here("MAXAR_data","Raster tif before and #after the blast","Before","10300500A5F95600.tif"))
 
@@ -168,6 +174,9 @@ The code above won't be run as files are very large and takes ages to process, t
 
 I will be calling the saved outcome : stack_after_before_log.tif to perform further analysis and save processing time but below is the outcome! let's have a look at it!
 
+Again, plotting was not performed directly here due to RPubs size publishing restrictions.
+
+A PNG format of the outcome was saved earlier as a reference in the directory and you can see it where relevant under different code chunks.
 ```{r message=FALSE, warning=FALSE, out.width= "0.5*paperwidth"}
 # stack_after_before_log<-
 #   stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
@@ -182,11 +191,10 @@ knitr::include_graphics(here::here("png","stack_after_before_log.png"))
 As the temporal difference is small, changes between before and after SAR images are assumed to be caused by the explosion, therefore, representing the damage.
 
 
-Density Map per zone is generated, the raster::extract did not work as the file is huge
-the shapefile Raster_cell_count_per_zones.shp was created from QGIS through the zonal statistics plugin
-the image differencing tiff layer:  stack_after_before_log and the beirut operational zones shapefile were used 
+Density Map per zone is generated, the raster::extract did not work as the file is huge.
+The shapefile Raster_cell_count_per_zones.shp was created from QGIS through the zonal statistics plugin. The image differencing tiff layer:  stack_after_before_log and the beirut operational zones shapefile were used.
 
-```{r message=FALSE, warning=FALSE,out.width= "0.5*paperwidth"}
+```{r message=FALSE, warning=FALSE,out.width= "0.8*paperwidth"}
 
 #  get the shapefile
 # Raster_cell_count_per_zones <- 
@@ -375,12 +383,6 @@ The below is an attempt to classify the raster cells/pixels where we can possibl
 #   write.csv(clustPerfSI, file = here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"), row.names = FALSE)
 # 
 
-# get the silhouette coerfficient saved in the table earlier
-clustPerfSI<-
-  read.csv(here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"))
-
-clustPerfSI
-
 ```
 
 I won't run the code here again as it takes a long time to finish, outcome again is saved.
@@ -429,22 +431,24 @@ let's plot the clustered result with 3 clusters.
 the classification was interpreted through projecting the 3 clusters stak in QGIS on a real photo as per below.
 for example, severe damage can be easily classified as the port area damages were visible.
 
-I could not publish the below due to their size, however, they are available on Github and in the report
+I could not publish the below due to their size, however, they are available on Github and in the report here: https://github.com/SaraMoatti/Beirut_explosion/blob/main/png/kmeans_classification%20vs.%20real%20image.png 
+
 ```{r message=FALSE, warning=FALSE, fig.cap=" one classification layer projected on the real explosion shot" ,out.width= "0.3*paperwidth"}
- #knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
+ #knitr::include_graphics(here::here("png","kmeans_classification vs. real image.png"))
 
 ```
 
-Zooming on the port area
+Zooming on the port area here: https://github.com/SaraMoatti/Beirut_explosion/blob/main/png/zoomed_kmeans_classification%20vs.%20real%20image.png 
+
 ```{r message=FALSE, warning=FALSE, fig.cap=" zooming in: one classification layer projected on the real explosion shot can indicate severe damage",out.width= "0.3*paperwidth"}
 # knitr::include_graphics(here::here("MAXAR_data","image_differencing","zoomed_kmeans_classification vs. real image.png"))
 
 ```
 
 
-Following the interpretation of the classification, below is a classified damage map
+Following the interpretation of the classification, below is a classified damage map.
 
-```{r message=FALSE, warning=FALSE,out.width= "0.5*paperwidth"}
+```{r message=FALSE, warning=FALSE,out.width= "1*paperwidth"}
 ####let's plot the clustered result with 3 clusters 
 # file is already saved in the directory from the previous code
 # let's call it 
@@ -468,12 +472,8 @@ Following the interpretation of the classification, below is a classified damage
 #        cex = 0.7) 
 
 # a png will be displayed as code can be processed but cannot be published on Rpubs due to its size
-
 knitr::include_graphics(here::here("png","Rplot01zoom.png"))
-
 ```
-
-
 
 ## Part 2: Damage assessment using reported observations
 
@@ -1002,7 +1002,7 @@ density_map3
 
 ```
 
-A building age layer can be added to the analysis, unfortunately, the data is not public but the map can be access on: https://coloringbeirut.com/view/age.html .
+A building age layer can be added to the analysis, unfortunately, the data is not public but the map can be accessed on: https://coloringbeirut.com/view/age.html .
 
 Focusing on the Beirut Blast areas, we observe that most of the buildings are over 70 years old, therefore, it is worth investigating this in depth and acknowledging that structure, age and conditions of buildings might be correlated with the damages clustering in particular zones when the data is made available.
 
