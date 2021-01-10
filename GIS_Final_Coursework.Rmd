@@ -1,0 +1,1029 @@
+---
+title: "Beirut Explosion Damage Assessment"
+#author: "Sara Moatti"
+#date: "10/01/2021"
+output: html_document
+---
+
+This research aims to explore different approaches (point-based analysis on reported damages and SAR imagery change detection) in performing a damage assessment that can guide the emergency response following the Beirut Port explosion that the capital on the 4th of August 2020.
+
+
+Data included:
+
+1) Beirut Operational Zones shapefile
+2) Beirut Buildings geojson
+3) UNHABITAT socio-economic classification shapefile
+4) Geolocated reported damages downloaded from Open Map Lebanon
+5) MAXAR Satellite Images before and after the explosion
+
+
+
+## Load the study area
+
+
+```{r message=FALSE, warning=FALSE}
+
+# loading libraries
+
+library(spatstat)
+library(here)
+library(sp)
+library(rgeos)
+library(maptools)
+library(GISTools)
+library(tmap)
+library(sf)
+library(geojson)
+library(geojsonio)
+library(tmaptools)
+library(dplyr)
+library(stringr)
+library(readr)
+library(rgdal)
+library(tmap)
+library(janitor)
+library(ggplot2)
+library(raster)
+library(fpc)
+library(dbscan)
+library(tidyverse)
+library(tidyr)
+
+
+# first, get the Beirut Explosion shapfiles
+# operational zones reflects the damaged zones in Beirut 
+
+Bei_Exp_Zones <- 
+  st_read(here::here("data", "beirut_port_explosions_operational_zones_139", "beirut_port_explosions_operational_zones_139.shp")) %>% 
+# transform the coordinate reference system to Dei EL Zor that covers Lebanon
+  st_transform(., 22770)
+
+# get the beirut buildings geojson to reflect on the urban area
+
+Beirut_Buildings <- 
+  st_read("https://opendata.arcgis.com/datasets/d4d43fbe781145d4b11f9eac3f5dc5a1_0.geojson") %>% 
+  st_transform(., 22770)
+
+# crop the dataframe with buildings to the operational zones extent
+
+Bei_Zones_Buildings<- Beirut_Buildings[Bei_Exp_Zones,]
+
+
+# get the UNHABITAT soscio-economic classification of operational zones  
+
+UN_habitat_shp <- 
+  st_read(here::here("data","unhabitat_zone_data_batch2_2020_08_19", "UNHABITAT_Zone_Data_batch2_2020_08_19.shp")) %>% 
+  st_transform(., 22770)
+
+# rename the variable 
+
+UN_habitat_shp<-UN_habitat_shp %>% 
+  dplyr::rename( socio_economic_classification = UNHABITAT1 )
+```
+
+## Part 1: Damage assessment using high resolution satellite imagery
+
+```{r message=FALSE, warning=FALSE}
+#try to bring the rgb stack
+#r1_stack<-
+#  stack(here::here("MAXAR_data","Raster tif before and #after the blast","Before","10300500A5F95600.tif"))
+
+# unify the extent 
+# I won't do thi here as it takes ages due to the large raster
+#r1_stack<-r1_stack %>% 
+#  resample(.,Bei_Exp_Zones,
+#          method = "ngb")
+
+# crop and mask
+#r1_stack<- r1_stack%>% 
+#  crop(.,Bei_Exp_Zones) %>% 
+#  mask(.,Bei_Exp_Zones)
+
+
+# repeat the process with image after the explosion
+# after
+
+#r1_after_stack<-
+#  stack(here::here("MAXAR_data","Raster tif before and #after the blast","After","10300500A6F8AA00.tif"))
+
+# unify the extent 
+# I won't do thi here as it takes ages due to the large raster
+#r1_after_stack<-r1_after_stack %>% 
+#  resample(.,Bei_Exp_Zones,
+#           method = "ngb")
+
+# crop and mask to Beirut operational zones
+
+#r1_after_stack<- r1_after_stack%>% 
+#  crop(.,Bei_Exp_Zones) %>% 
+#  mask(.,Bei_Exp_Zones)
+
+#check if both have same extent
+
+#extent(r1_after_stack)
+#extent(r1_stack)
+
+#if not
+#r1_after_stack<-r1_after_stack %>% 
+#  resample(.,r1_stack,
+#          method = "ngb")
+
+
+# start the image differencing with overlay
+# trial with I2-I1
+
+#stack_after_before <- overlay(r1_after_stack,
+#                             r1_stack,
+#                        fun = function(r1, r2) { return( r1 - r2) })
+
+# save the outcome as it is easier to work with the image difference tif instead of repeating the lengthy process each time
+
+#savetofolder_stack_after_before<- 
+#  writeRaster(stack_after_before,
+#              filename=file.path(here::here("MAXAR_data","image_differencing"),"stack_after_before.tif"))
+
+# increasing the memory to handle the process
+
+#memory.limit()
+
+#memory.limit(size=40000)
+
+# log rationing difference
+# log10(r1/r2) 
+
+#stack_after_before_log <- overlay(r1_after_stack,
+#                              r1_stack,
+#                              fun = function(r1, r2) { #return(log10(r1/r2))})
+# save the outcome
+
+#savetofolder_stack_after_before_log<- 
+#  writeRaster(stack_after_before_log,
+#              filename=file.path(here::here("MAXAR_data","image_differencing"),"stack_after_before_log.tif"))
+
+
+
+```
+
+The code above won't be run as files are very large and takes ages to process, this is to indicate how the data was prepared.
+
+I will be calling the saved outcome : stack_after_before_log.tif to perform further analysis and save processing time but below is the outcome! let's have a look at it!
+
+```{r message=FALSE, warning=FALSE}
+stack_after_before_log<-
+  stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
+# look at the result
+plotRGB(stack_after_before_log,axes=TRUE, stretch="lin")
+```
+
+As the temporal difference is small, changes between before and after SAR images are assumed to be caused by the explosion, therefore, representing the damage.
+
+
+Density Map per zone is generated, the raster::extract did not work as the file is huge
+the shapefile Raster_cell_count_per_zones.shp was created from QGIS through the zonal statistics plugin
+the image differencing tiff layer:  stack_after_before_log and the beirut operational zones shapefile were used 
+
+```{r message=FALSE, warning=FALSE}
+
+# get the shapefile
+Raster_cell_count_per_zones <- 
+  st_read(here::here("MAXAR_data","image_differencing", "Raster_cell_count_per_zones.shp")) %>% 
+  st_transform(., 22770)
+
+# prepare the data
+# get the density
+
+density<-Raster_cell_count_per_zones%>%
+  #calculate area
+  mutate(area=st_area(.))%>%
+  #then density of the points per ward
+  mutate(density_raster=X_countfina/area)%>%
+  #select density and some other variables 
+  dplyr::select(density_raster, zone_numbe, Cadaster_1, X_countfina)
+
+
+tmap_mode("plot")
+breaks = c(4, 4.15, 4.3, 4.45, 4.6,4.75) 
+
+dm1 <- tm_shape(density) + 
+  tm_borders("white")+
+  tm_polygons("density_raster",
+              breaks=breaks,
+              palette="-cividis",
+              alpha = 0.7)+
+  tm_scale_bar(position=c(0.01,0.1),text.size=0.5,color.dark = "grey46")+
+  tm_compass(north=0, color.dark = "grey46",position=c("left","0.2"), size = 0.5)+
+  tm_legend(show=FALSE)+
+  tm_layout(title = "Damage assessment_SAR imagery based",title.size = 2,frame=FALSE)
+  
+
+dm1_legend <- tm_shape(density) +
+  tm_polygons("density_raster",
+              title = "Damage Density",
+              breaks=breaks,
+              palette="-cividis",
+              alpha = 0.7,
+              border.col = "white") +
+  tm_layout(legend.only=TRUE, legend.title.size = 1,legend.position=c(0.01,0.25),asp=0.1)
+
+density_map1=tmap_arrange(dm1,dm1_legend)
+density_map1
+
+```
+
+The below is an attempt to classify the raster cells/pixels where we can possibly understand the changes/damages
+
+```{r message=FALSE, warning=FALSE}
+## this analysis follows the below tutorials
+
+#http://remote-sensing.org/unsupervised-classification-with-r/
+#https://www.r-exercises.com/2018/02/28/advanced-techniques-with-raster-data-part-1-unsupervised-classification/?__cf_chl_captcha_tk__=95093339d521789be882d0b5b3ab77f12debcf39-1609698000-0-AWqv_DC4nb9vdENGfsl9H-zfUjYkvB_MYG1F7eGd5_wbbLMYmiRCS7O4I-SO2gJ-vh0VHQjYruVihL_i6Yva7OXsHZSx6uy1ao-BCuTjPCDNdNI0rrL8rJZjC_-w-uTovyTYlZtZBqGyLMuMJAc1jkeYRoKKT-smd9quKJkufCXUuaKPOY0gOgKr3HEvnJ85RCLHlu5yR0nwwxE4Yby2OXixVxBC-zfs6KcIjSX_D0YPtFFcQJ6zeHLGvrKubUdgvy-QgK-yibPsf1SME3D3GOSrbjKBlXp1zAKXRZixFdGgwPdR7gsovlOSZYRvjp8z6HkMFazNcHzDLR7wxf2AnvQpJpUvssrPSz96xRF37PmvdIwIlebYRemHwAaNRT_4zC-CFczGncHctZ4WThw0TrUNHpDT-3Z_IXzO1MG5y0wUBDxiF9GDoVoBRPthwXgYTgXugtHjt4Hw3DdeR7p-ATTmjbnGihYy0TPMJVxztb5mjx5_cxKDpS1aTllEtIQbDHfaayxl1nq3VPTts82w_TkhHvYyknqewe5c1eVZiUxYrNhJSnL1MfvCjaJOY3mLcYkAxuMSzkMY7zm3V73jEtIUlItGap3rTI_ZbC45vMxPQnF_CpI6EyBTcuxrvINgckLvYknpcFAzl2k6J3N_Mm5DjzswE080byrC3FSD-G_i
+
+# load the log image rationing 
+
+# stack_after_before_log<-
+#   stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
+# 
+# # Extract all values from the raster into a data frame
+# rstDF <- values(stack_after_before_log)
+# 
+# head(rstDF)
+
+# # Check NA's in the data
+# idx <- complete.cases(rstDF)
+# head(idx)
+# 
+# # Initiate the raster datasets that will hold all clustering solutions 
+# # from 2 groups/clusters up to 12
+# rstKM <- raster(stack_after_before_log[[1]])
+# rstCLARA <- raster(stack_after_before_log[[1]])
+# 
+# # increase the memory limit to handle the processing
+# memory.size(40000)
+# 
+# for(nClust in 2:12){
+#   
+#   cat("-> Clustering data for nClust =",nClust,"......")
+#   
+#   # Perform K-means clustering
+#   km <- kmeans(rstDF[idx,], centers = nClust, iter.max = 50)
+#   
+#   # Perform CLARA's clustering (using manhattan distance)
+#   cla <- cluster::clara(rstDF[idx, ], k = nClust, metric = "manhattan")
+#   
+#   # Create a temporary integer vector for holding cluster numbers
+#   kmClust <- vector(mode = "integer", length = ncell(stack_after_before_log))
+#   claClust <- vector(mode = "integer", length = ncell(stack_after_before_log))
+#   
+#   # Generate the temporary clustering vector for K-means (keeps track of NA's)
+#   kmClust[!idx] <- NA
+#   kmClust[idx] <- km$cluster
+#   
+#   # Generate the temporary clustering vector for CLARA (keeps track of NA's too ;-)
+#   claClust[!idx] <- NA
+#   claClust[idx] <- cla$clustering
+#   
+#   # Create a temporary raster for holding the new clustering solution
+#   # K-means
+#   tmpRstKM <- raster(stack_after_before_log[[1]])
+#   # CLARA
+#   tmpRstCLARA <- raster(stack_after_before_log[[1]])
+#   
+#   # Set raster values with the cluster vector
+#   # K-means
+#   values(tmpRstKM) <- kmClust
+#   # CLARA
+#   values(tmpRstCLARA) <- claClust
+#   
+#   # Stack the temporary rasters onto the final ones
+#   if(nClust==2){
+#     rstKM    <- tmpRstKM
+#     rstCLARA <- tmpRstCLARA
+#   }else{
+#     rstKM    <- stack(rstKM, tmpRstKM)
+#     rstCLARA <- stack(rstCLARA, tmpRstCLARA)
+#   }
+#   
+#   cat(" done!\n\n")
+# }
+# 
+# 
+# # Write the clustering solutions for each algorithm
+# 
+# save_kmean<-
+#   writeRaster(rstKM,
+#               filename=file.path(here::here("MAXAR_data","image_differencing"),"raster_kmean.tif"))
+# save_clara<-
+#   writeRaster(rstCLARA,
+#               filename=file.path(here::here("MAXAR_data","image_differencing"),"raster_clara.tif"))
+# 
+# 
+# #Evaluating Unsupervised Classification/Clustering Performance
+# 
+# library(clusterCrit)
+# 
+# # Start a data frame that will store all silhouette values
+# # for k-means and CLARA 
+# 
+# clustPerfSI <- data.frame(nClust = 2:12, SI_KM = NA, SI_CLARA = NA)
+# 
+# for(i in 1:nlayers(rstKM)){ # Iterate through each layer
+#   
+#   cat("-> Evaluating clustering performance for nClust =",(2:12)[i],"......")
+#   
+#   # Extract random cell samples stratified by cluster
+#   cellIdx_RstKM <- sampleStratified(rstKM[[i]], size = 2000)
+#   cellIdx_rstCLARA <- sampleStratified(rstCLARA[[i]], size = 2000)
+#   
+#   # Get cell values from the Stratified Random Sample from the raster 
+#   # data frame object (rstDF)
+#   rstDFStRS_KM <- rstDF[cellIdx_RstKM[,1], ]
+#   rstDFStRS_CLARA <- rstDF[cellIdx_rstCLARA[,1], ]
+#   
+#   # Make sure all columns are numeric (intCriteria function is picky on this)
+#   rstDFStRS_KM[] <- sapply(rstDFStRS_KM, as.numeric)
+#   rstDFStRS_CLARA[] <- sapply(rstDFStRS_CLARA, as.numeric)
+#   
+#   # Compute the sample-based Silhouette index for: 
+#   
+#   # K-means
+#   clCritKM <- intCriteria(traj = rstDFStRS_KM, 
+#                           part = as.integer(cellIdx_RstKM[,2]), 
+#                           crit = "Silhouette")
+#   # and CLARA
+#   clCritCLARA <- intCriteria(traj = rstDFStRS_CLARA, 
+#                              part = as.integer(cellIdx_rstCLARA[,2]), 
+#                              crit = "Silhouette")
+#   
+#   # Write the silhouette index value to clustPerfSI data frame holding 
+#   # all results
+#   clustPerfSI[i, "SI_KM"]    <- clCritKM[[1]][1]
+#   clustPerfSI[i, "SI_CLARA"] <- clCritCLARA[[1]][1]
+#   
+#   cat(" done!\n\n")
+#   
+# }
+# 
+# # save the results in a csv file
+# 
+# save_silhouette<-
+#   write.csv(clustPerfSI, file = here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"), row.names = FALSE)
+# 
+# # print out a table with the silhouette index results for comparing each clustering solution:
+#   
+# silhouette_table<-
+#   knitr::kable(clustPerfSI, 
+#                digits = 3, align = "c", 
+#                col.names = c("#clusters","Avg. Silhouette (k-means)","Avg. Silhouette (CLARA)"))
+# 
+# silhouette_table
+# 
+# # make a plot for comparing the two algorithms
+# 
+# plot(clustPerfSI[,1], clustPerfSI[,2], 
+#      xlim = c(1,13), ylim = range(clustPerfSI[,2:3]), type = "n", 
+#      ylab="Avg. Silhouette Index", xlab="# of clusters",
+#      main="Silhouette index by # of clusters")
+# 
+# # Plot Avg Silhouette values across # of clusters for K-means
+# lines(clustPerfSI[,1], clustPerfSI[,2], col="red")
+# # Plot Avg Silhouette values across # of clusters for CLARA
+# lines(clustPerfSI[,1], clustPerfSI[,3], col="blue")
+# 
+# # Grid lines
+# abline(v = 1:13, lty=2, col="light grey")
+# abline(h = seq(0.30,0.44,0.02), lty=2, col="light grey")
+# 
+# legend("topright", legend=c("K-means","CLARA"), col=c("red","blue"), lty=1, lwd=1)
+
+
+```
+
+I won't run the code here again as it takes a long time to finish, outcome again is saved.
+
+Below is the silhouette analysis where we evaluate the performance of both algorithms
+
+```{r message=FALSE, warning=FALSE}
+# get the silhouette coerfficient saved in the table earlier
+clustPerfSI<-
+  read.csv(here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"))
+
+#clustPerfSI
+
+#call the table where the solhouette coefficeitn are stored
+
+knitr::kable(clustPerfSI, digits = 3, align = "c", 
+             col.names = c("#clusters","Avg. Silhouette (k-means)","Avg. Silhouette (CLARA)"))
+
+# set the layout
+plot(clustPerfSI[,1], clustPerfSI[,2],
+     xlim = c(1,13), ylim = range(clustPerfSI[,2:3]), type = "n", 
+     ylab="Avg. Silhouette Coeff.", xlab="Number of clusters",
+     main="Silhouette Coeff. by number of clusters")
+
+
+# Plot Avg Silhouette values across # of clusters for K-means
+lines(clustPerfSI[,1], clustPerfSI[,2], col="navyblue",lwd=2)
+# Plot Avg Silhouette values across # of clusters for CLARA
+lines(clustPerfSI[,1], clustPerfSI[,3], col="lightsteelblue4",lwd=2)
+
+# Grid lines
+abline(v = 1:13, lty=2, col="light grey")
+abline(h = seq(0.30,0.44,0.02), lty=2, col="light grey")
+
+legend("topright", legend=c("K-means","CLARA"), col=c("navyblue","lightsteelblue4"), lty=1, lwd=2)
+
+
+```
+
+
+
+We can observe that Kmean cluster 3 had higher silhouette coefficient, therefore, 3 classifications will be elaborated.
+
+let's plot the clustered result with 3 clusters.
+
+the classification was interpreted through projecting the 3 clusters stak in QGIS on a real photo as per below.
+for example, severe damage can be easily classified as the port area damages were visible.
+
+
+```{r message=FALSE, warning=FALSE, fig.cap=" one classification layer projected on the real explosion shot"}
+knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
+
+```
+
+Zooming on the port area
+```{r message=FALSE, warning=FALSE, fig.cap=" zooming in: one classification layer projected on the real explosion shot can indicate severe damage"}
+knitr::include_graphics(here::here("MAXAR_data","image_differencing","zoomed_kmeans_classification vs. real image.png"))
+
+```
+
+
+Following the interpretation of the classification, below is a classified damage map
+
+```{r message=FALSE, warning=FALSE}
+####let's plot the clustered result with 3 clusters 
+# file is already saved in the directory from the previous code
+# let's call it 
+
+rstKM<-
+  stack(here::here("MAXAR_data","image_differencing","raster_kmean.tif"))
+
+cuts=c(0,1,2,3) #set breaks
+
+# plot reclassified data
+plot(rstKM[[3]],
+     legend = FALSE,
+     col = c( "yellow", "navyblue","lightsteelblue4"), axes = FALSE,  
+     main = "Classified Damage \n severe, medium, little to no damage",cex.main=1.2,box=FALSE)
+
+legend("bottomleft",
+       legend = c("severe damage","medium damage","little to no damage" ),
+       fill = c("navyblue", "lightsteelblue4", "yellow"),
+       border = FALSE,
+       bty = "n",
+       cex = 0.7) 
+```
+
+
+
+
+
+## Part 2: Damage assessment using reported observations
+
+
+```{r message=FALSE, warning=FALSE}
+# loading the damage assessment data collected from different sources/NGOs
+# point based geolocated damages data 
+
+# "The Volunteer Circle" NGO data
+# ref: https://openmaplebanon.org/open-data 
+
+volun_circ_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - TheVolunteerCircle.csv"),      
+                           locale = locale(encoding = "UTF-8"),
+                           na = "NA")
+
+# select relevant variables and clean data
+
+volun_circ_csv_contains<-volun_circ_csv %>% 
+  dplyr::select(contains("Building"), 
+                contains("Lat"),
+                contains("Long"),
+                contains("Zone"),
+                contains("Neighborhood")) %>% 
+  clean_names()
+
+# rename columns names as they are causing problem with the arabic font
+
+volun_circ_csv_contains <- volun_circ_csv_contains %>%
+  dplyr::rename(building_exterior_assessment=1,neighbrhood=5)
+  
+
+# remove NA values
+
+volun_circ_new <- na.omit(volun_circ_csv_contains)
+
+# "Rebuild Beirut" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+Reb_Bei_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - RebuildBeirut.csv"),      
+                        locale = locale(encoding = "UTF-8"),
+                        na = "NA")
+
+# select relevant variables and clean data
+
+Reb_Bei_csv_contains<-Reb_Bei_csv %>% 
+  dplyr::select(contains("Lat"),
+                contains("Long")) %>% 
+  clean_names()
+
+Reb_Bei_new <- na.omit(Reb_Bei_csv_contains)
+
+#the dataset was dropped as it is not fully geolocated
+
+# "Nusaned" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+nusanad_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - nusanad.csv"),      
+                        locale = locale(encoding = "UTF-8"),
+                        na = "NA")
+
+# select relevant variables and clean data
+
+nusanad_csv_contains<-nusanad_csv %>% 
+  dplyr::select(contains("Lat"),
+                contains("Long"),
+                contains("Damage Level")) %>% 
+  clean_names()
+
+# remove NA values
+
+nusanad_new <- na.omit(nusanad_csv_contains)
+
+#the dataset was dropped as the majority is not geolocated
+
+# "MySay" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+mysay_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - mysay.csv"),      
+                      locale = locale(encoding = "UTF-8"),
+                      na = "NA")
+
+# select relevant variables and clean data
+
+mysay_csv_contains<-mysay_csv %>% 
+  dplyr::select(contains("Lat"),
+                contains("Long"),
+                contains("House damage")) %>% 
+  clean_names()
+
+# remove NA values
+
+mysay_new <- na.omit(mysay_csv_contains)
+
+# clean the data: extract the damage points only
+
+mysay_new <- mysay_new %>% 
+  filter(`house_damage`=="Total destruction" | `house_damage`=="Some damage" )
+
+# "FrontLineEngineers" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+FrontLineEngineers_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - FrontLineEngineers.csv"),      
+                                   locale = locale(encoding = "UTF-8"),
+                                   na = "NA")
+
+# select relevant variables and clean data
+
+FrontLineEngineers_csv_contains<-FrontLineEngineers_csv %>% 
+  dplyr::select("Lat",
+                "Long",
+                "Building condition") %>% 
+  clean_names()
+
+FrontLineEngineers_new <- na.omit(FrontLineEngineers_csv_contains)
+
+# clean the data: exclude the non damage points
+
+FrontLineEngineers_new  <- FrontLineEngineers_new  %>% 
+  filter(`building_condition`!="No Damage, No evacuation" )
+
+#remove rows with empty building condition that were not dropped as NA
+
+FrontLineEngineers_new<-
+  FrontLineEngineers_new[FrontLineEngineers_new$'building_condition' != "", ]
+
+# "BebWShebek" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+BebWShebek_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - BebWShebek.csv"),      
+                           locale = locale(encoding = "UTF-8"),
+                           na = "NA")
+
+#select relevant variables - there was no other useful metadata
+BebWShebek_csv_contains<-BebWShebek_csv %>% 
+  dplyr::select("Lat",
+                "Long") %>% 
+  clean_names()
+
+BebWShebek_new <- na.omit(BebWShebek_csv_contains)
+
+# "Basecamp" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+Basecamp_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - Basecamp.csv"),      
+                         locale = locale(encoding = "UTF-8"),
+                         na = "NA")
+
+# resolve data types issues
+Basecamp_csv <- Basecamp_csv %>% 
+  mutate_at(c("Lat","Long"), as.double)
+
+
+Basecamp_csv_contains<-Basecamp_csv %>% 
+  dplyr::select("Lat",
+                "Long") %>% 
+  clean_names()
+
+Basecamp_new <- na.omit(Basecamp_csv_contains)
+
+#"lebaneseRedCross" NGO data
+# ref: https://openmaplebanon.org/open-data
+
+leb_red_cross_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - LebaneseRedCross.csv"),      
+                              locale = locale(encoding = "UTF-8"),
+                              na = "NA")
+
+# Select relevant variables
+# geolocation method might be a problem in this dataset
+# damages are geolocated/grouped by zones midpoint coordinates not individual coordinates
+
+
+leb_red_cross_csv_contains<-leb_red_cross_csv %>% 
+  dplyr::select(contains("Lat"),
+                contains("Long"),
+                contains("Zone"),
+                contains("OML UID")) %>% 
+  clean_names()
+
+
+```
+The rebui_Bei and nusanad datasets were dropped as points were not geolocated. The leb_red_cross as points were devided by zone and not  geolocated.
+
+Let's combine the datasets 
+
+```{r message=FALSE, warning=FALSE}
+# let's combine the datasets excluding the lebanese red cross dataset
+
+combined_datasets = bind_rows(volun_circ_new,
+                            mysay_new,
+                            FrontLineEngineers_new,
+                            BebWShebek_new,
+                            Basecamp_new) 
+
+combined_datasets_spatial<- combined_datasets %>%
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770) %>% 
+  .[Bei_Exp_Zones,]
+
+# Simple Bar Plot
+
+# prepare the data
+
+volun_circ_new_hist<-volun_circ_new %>% 
+  mutate(NGO = "The Volunteer Circle")
+mysay_new_hist<-mysay_new %>% 
+  mutate(NGO = "My Say")
+FrontLineEngineers_new_hist<-FrontLineEngineers_new %>% 
+  mutate(NGO = "Front Line Engineers")
+BebWShebek_new_hist<-BebWShebek_new %>% 
+  mutate(NGO = "BeB W Shebbek")
+Basecamp_new_hist<-Basecamp_new %>% 
+  mutate(NGO="Basecamp")
+
+combined_datasets_hist<- bind_rows(volun_circ_new_hist,
+                              mysay_new_hist,
+                              FrontLineEngineers_new_hist,
+                              BebWShebek_new_hist,
+                              Basecamp_new_hist ) %>% 
+  add_count(NGO) %>% 
+  dplyr::select(NGO, n)
+
+p<-ggplot (combined_datasets_hist, aes (x= NGO, y=-n , fill = as.factor(n))) +         
+  geom_bar (position = position_dodge(), stat = "identity",show.legend = FALSE) + 
+  scale_fill_manual(values = alpha(c( "red", "#FFFF66","#66CC66","#003366", "#FF9966"), 0.006))+
+  coord_flip () + 
+  scale_x_discrete(name = "", position = "top") +     
+  scale_y_continuous(name = "Number of reported damage",
+                     breaks = seq(0, -1000, by = -200),  
+                     labels = seq(0,  1000, by = 200))  
+
+p
+
+  
+```
+
+
+Let's plot all observations
+
+```{r message=FALSE, warning=FALSE}
+###plot all observations with relative metadata
+
+# transform the dataframe to sf to prepare it for plotting
+
+volun_circ_spatial<- volun_circ_new %>%
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770) %>% 
+  .[Bei_Exp_Zones,]
+
+mysay_spatial<- mysay_new %>% 
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770)%>% 
+  .[Bei_Exp_Zones,]
+
+FrontLineEngineers_spatial<- FrontLineEngineers_new %>%
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770)%>% 
+  .[Bei_Exp_Zones,]
+
+BebWShebek_spatial<- BebWShebek_new %>%
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770)%>% 
+  .[Bei_Exp_Zones,]
+
+Basecamp_spatial <- Basecamp_new %>%
+  st_as_sf(., coords = c("long", "lat"), 
+           crs = 4326) %>%
+  st_transform(., 22770)%>% 
+  .[Bei_Exp_Zones,]
+
+tmap_mode("view")
+
+t1=tm_shape(Bei_Exp_Zones) +
+  tm_polygons(col = "navyblue", alpha = 0.3,border.col = "white") +
+  tm_shape(Bei_Zones_Buildings) +
+  tm_polygons(border.alpha = 0,col = "beige", alpha = 0.5) +
+  tm_shape(volun_circ_spatial) +
+  tm_dots(col = "navyblue", border.alpha = 0,size=0.008)
+
+t2=tm_shape(mysay_spatial)+
+  tm_dots(col = "yellow2", border.alpha = 0, size=0.008) 
+
+
+t3=tm_shape(FrontLineEngineers_spatial) +
+  tm_dots(col = "red4", border.alpha = 0, size=0.008) 
+
+t4=tm_shape(BebWShebek_spatial) +
+  tm_dots(col = "sienna2", border.alpha = 0, size=0.008) 
+
+t5=tm_shape(Basecamp_spatial) +
+  tm_dots(col = "palegreen3", border.alpha = 0, size=0.008) 
+
+t1+t2+t3+t4+t5
+```
+
+Unfortunately, metadata is not available for all datasets, this is due to the lack of a unified reporting process!
+
+
+
+Now let's work with what we have and create a map to see the density of observations per zone
+
+
+```{r message=FALSE, warning=FALSE}
+# Density Map 
+
+points_sf_joined <- Bei_Exp_Zones%>%
+  st_join(combined_datasets_spatial)%>%
+  add_count(zone_numbe)%>%
+  janitor::clean_names()%>%
+  #calculate area
+  mutate(area=st_area(.))%>%
+  #then density of the points per ward
+  mutate(density_obs=n/area*1000)%>%
+  #select density and some other variables 
+  dplyr::select(density_obs, zone_numbe, cadaster_1, n)
+
+
+points_sf_joined<- points_sf_joined %>%                    
+  group_by(zone_numbe) %>%         
+  summarise(density_obs = first(density_obs),
+            
+            zone_names= first(cadaster_1),
+            damagecount= first(n))
+
+##### density map _observations based
+breaks2 = c(0,0.3, 0.6, 0.9,1.2,1.5,1.8,2.1) 
+
+tmap_mode("plot")
+
+dm2 <- tm_shape(points_sf_joined) + 
+  tm_borders("white")+
+  tm_polygons("density_obs",
+              breaks = breaks2,
+              palette="-cividis",
+              alpha = 0.7)+
+  tm_scale_bar(position=c(0.01,0.1),text.size=0.5,color.dark = "grey46")+
+  tm_compass(north=0, color.dark = "grey46",position=c("left","0.2"), size = 0.5)+
+  tm_legend(show=FALSE)+
+  tm_layout(title = "Damage assessment_Observations based",title.size = 2,frame=FALSE)
+
+
+dm_legend2 <- tm_shape(points_sf_joined) +
+  tm_polygons("density_obs",
+              breaks= breaks2,
+              title = "Damage Density",
+              palette="-cividis",
+              alpha = 0.7,
+              border.col = "white") +
+  tm_layout(legend.only=TRUE, legend.title.size = 1,legend.position=c(0.01,0.25),asp=0.1)
+
+density_map2=tmap_arrange(dm2,dm_legend2)
+density_map2
+
+```
+
+```{r message=FALSE, warning=FALSE}
+
+# check for nay interesting patterns
+combined_datasets_spatial_sub <- combined_datasets_spatial[Bei_Exp_Zones,]
+
+# transform sf to sp
+combined_datasets_spatial_sub <- combined_datasets_spatial_sub  %>%
+  as(., 'Spatial')
+
+
+window <- as.owin(Bei_Exp_Zones)
+#plot(window)
+
+combined_datasets_spatial_sub.ppp <- ppp(x=combined_datasets_spatial_sub@coords[,1],
+                                y=combined_datasets_spatial_sub@coords[,2],
+                                window=window)
+
+#combined_datasets_spatial_sub@coords[,1]
+# a quick plot
+combined_datasets_spatial_sub.ppp %>%
+  density(., sigma=100) %>%
+  plot(.,pch=16,cex=0.5,
+       main="Reported Damages")
+```
+
+a spatial pattern is visible, let's try a DBSCAN 
+
+let's define the epsilon
+
+```{r message=FALSE, warning=FALSE}
+
+# Ripley's k analysis 
+
+K <- combined_datasets_spatial_sub.ppp %>%
+  Kest(., correction="border") %>%
+  plot(col = c("black"))
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# DBSCAN
+
+# prepare the data
+combined_datasets_spatial_sub_points <- combined_datasets_spatial_sub %>%
+  coordinates(.)%>%
+  as.data.frame()
+
+# double check the data type
+#class(combined_datasets_spatial_sub_points)
+
+#now run the dbscan analysis
+db <- combined_datasets_spatial_sub_points%>%
+  fpc::dbscan(.,eps = 100, MinPts = 30)
+
+#reset the layout to default
+par(mfrow=c(1,1))
+
+#now plot the results
+plot(db, combined_datasets_spatial_sub_points, main = "DBSCAN Output", frame = F)
+plot(Bei_Exp_Zones$geometry, add=T)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+
+#db$cluster
+
+combined_datasets_spatial_sub_points<- combined_datasets_spatial_sub_points %>%
+  mutate(dbcluster=db$cluster)
+
+chulls <- combined_datasets_spatial_sub_points %>%
+  group_by(dbcluster) %>%
+  dplyr::mutate(hull = 1:n(),
+                hull = factor(hull, chull(coords.x1, coords.x2)))%>%
+  arrange(hull)
+
+chulls <- chulls %>%
+  filter(dbcluster >=1)
+
+dbplot <- ggplot(data=combined_datasets_spatial_sub_points, 
+                 aes(coords.x1, coords.x2, colour=dbcluster, fill=dbcluster)) 
+#add the points in
+dbplot <- dbplot + geom_point()
+#now the convex hulls
+dbplot <- dbplot + geom_polygon(data = chulls, 
+                                aes(coords.x1, coords.x2, group=dbcluster), 
+                                alpha = 0.5) 
+
+# plot 
+
+dbplot + theme_bw() + coord_equal()
+
+ 
+```
+
+let's add a basemap
+
+```{r message=FALSE, warning=FALSE}
+#add a basemap
+#get the bbox for Beirut
+
+BeirutWGSbb <- Bei_Exp_Zones%>%
+  st_transform(., 4326)%>%
+  st_bbox()
+
+#BeirutWGSbb
+
+library(OpenStreetMap)
+
+# choose the esri-topo style
+
+basemap <- OpenStreetMap::openmap(c(33.86149,35.49469),c(33.91946,35.55270),
+                                  zoom=NULL,
+                                  "esri-topo")
+#plot.OpenStreetMap(basemap) 
+
+# convert the basemap to local grid
+
+basemap_bng <- openproj(basemap, projection="+init=epsg:22770" , alpha=0.2)
+
+autoplot.OpenStreetMap(basemap_bng) + 
+  geom_point(data=combined_datasets_spatial_sub_points, 
+             aes(coords.x1,coords.x2, 
+                 colour=dbcluster, 
+                 fill=dbcluster)) + 
+  geom_polygon(data = chulls, 
+               aes(coords.x1,coords.x2, 
+                   group=dbcluster,
+                   fill=dbcluster), 
+               alpha = 0.5) 
+```
+
+## Further Analysis & recommendations
+
+Let's investigate what are the hidden characteristics that might led to the spatial clustering of damages in those areas by adding socio-economic classification of the affected zones
+
+```{r message=FALSE, warning=FALSE}
+
+##### UNHABITAT socio-economic classification #####
+
+tmap_mode("plot")
+
+dm3 <- tm_shape(UN_habitat_shp) + 
+  tm_borders("white")+
+  tm_polygons("socio_economic_classification",
+              #breaks=breaks,
+              palette="PuOr",
+              alpha = 0.7)+
+  tm_scale_bar(position=c(0.01,0.1),text.size=0.5,color.dark = "grey46")+
+  tm_compass(north=0, color.dark = "grey46",position=c("left","0.2"), size = 0.5)+
+  tm_legend(show=FALSE)+
+  tm_layout(title = "Socio-Economic Classification",title.size = 2,frame=FALSE)
+
+
+dm3_legend <- tm_shape(UN_habitat_shp) +
+  tm_polygons("socio_economic_classification",
+              title = "",
+              #breaks=breaks,
+              palette="PuOr",
+              alpha = 0.7,
+              border.col = "white") +
+  tm_layout(legend.only=TRUE, legend.title.size = 1,legend.position=c(0.01,0.25),asp=0.1)
+
+density_map3=tmap_arrange(dm3,dm3_legend)
+density_map3
+
+
+```
+
+A building age layer can be added to the analysis, unfortunately, the data is not public but the map can be access on: https://coloringbeirut.com/view/age.html .
+
+Focusing on the Beirut Blast areas, we observe that most of the buildings are over 70 years old, therefore, it is worth investigating this in depth and acknowledging that structure, age and conditions of buildings might be correlated with the damages clustering in particular zones when the data is made available.
+
+
+``````{r pressure, echo=FALSE}
+
+```
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

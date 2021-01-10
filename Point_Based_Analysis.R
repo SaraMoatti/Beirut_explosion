@@ -25,7 +25,7 @@ library(tidyverse)
 library(tidyr)
 
 # first, get the Beirut Explosion operational zones
-# operational zones reflects the damaged zones in Beirut (ref)
+# operational zones reflects the damaged zones in Beirut 
 
 Bei_Exp_Zones <- 
   st_read(here::here("data", "beirut_port_explosions_operational_zones_139", "beirut_port_explosions_operational_zones_139.shp")) %>% 
@@ -91,7 +91,7 @@ t
 # "The Volunteer Circle" NGO data
 # ref: https://openmaplebanon.org/open-data 
 
-volun_circ_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - TheVolunteerCircle.csv",      
+volun_circ_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - TheVolunteerCircle.csv"),      
                            locale = locale(encoding = "UTF-8"),
                            na = "NA")
 
@@ -109,7 +109,7 @@ volun_circ_csv_contains<-volun_circ_csv %>%
 
 volun_circ_csv_contains <- volun_circ_csv_contains %>%
   dplyr::rename(building_exterior_assessment=1,neighbrhood=5)
-  
+
 
 # remove NA values
 
@@ -118,7 +118,7 @@ volun_circ_new <- na.omit(volun_circ_csv_contains)
 # "Rebuild Beirut" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-Reb_Bei_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - RebuildBeirut.csv",      
+Reb_Bei_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - RebuildBeirut.csv"),      
                         locale = locale(encoding = "UTF-8"),
                         na = "NA")
 
@@ -136,7 +136,7 @@ Reb_Bei_new <- na.omit(Reb_Bei_csv_contains)
 # "Nusaned" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-nusanad_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - nusanad.csv",      
+nusanad_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - nusanad.csv"),      
                         locale = locale(encoding = "UTF-8"),
                         na = "NA")
 
@@ -157,7 +157,7 @@ nusanad_new <- na.omit(nusanad_csv_contains)
 # "MySay" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-mysay_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - mysay.csv",      
+mysay_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - mysay.csv"),      
                       locale = locale(encoding = "UTF-8"),
                       na = "NA")
 
@@ -181,7 +181,7 @@ mysay_new <- mysay_new %>%
 # "FrontLineEngineers" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-FrontLineEngineers_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - FrontLineEngineers.csv",      
+FrontLineEngineers_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - FrontLineEngineers.csv"),      
                                    locale = locale(encoding = "UTF-8"),
                                    na = "NA")
 
@@ -208,7 +208,7 @@ FrontLineEngineers_new<-
 # "BebWShebek" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-BebWShebek_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - BebWShebek.csv",      
+BebWShebek_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - BebWShebek.csv"),      
                            locale = locale(encoding = "UTF-8"),
                            na = "NA")
 
@@ -223,7 +223,7 @@ BebWShebek_new <- na.omit(BebWShebek_csv_contains)
 # "Basecamp" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-Basecamp_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - Basecamp.csv",      
+Basecamp_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - Basecamp.csv"),      
                          locale = locale(encoding = "UTF-8"),
                          na = "NA")
 
@@ -242,7 +242,7 @@ Basecamp_new <- na.omit(Basecamp_csv_contains)
 #"lebaneseRedCross" NGO data
 # ref: https://openmaplebanon.org/open-data
 
-leb_red_cross_csv <- read_csv("C:/Users/SaraMoatti/Desktop/UCL/Year 2/GIS/Assignment/DBScan_Clustering_Attempt/data/OML Consolidated Public Sheet - LebaneseRedCross.csv",      
+leb_red_cross_csv <- read_csv(here::here("data","OML Consolidated Public Sheet - LebaneseRedCross.csv"),      
                               locale = locale(encoding = "UTF-8"),
                               na = "NA")
 
@@ -257,6 +257,8 @@ leb_red_cross_csv_contains<-leb_red_cross_csv %>%
                 contains("Zone"),
                 contains("OML UID")) %>% 
   clean_names()
+
+
 
 leb_red_cross_UID <- na.omit(leb_red_cross_csv_contains)
 
@@ -324,8 +326,6 @@ t5= tm_shape(Bei_Exp_Zones) +
   tm_shape(Basecamp_spatial) +
   tm_dots(col = "violet") 
 
-#check how to add legend
-#check how to make them overlap without covering each
 
 t1+t2+t3+t4+t5
 

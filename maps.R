@@ -6,6 +6,22 @@ tmaptools::palette_explorer()
 
 ### damage density _raster based data
 
+Raster_cell_count_per_zones <- 
+  st_read(here::here("MAXAR_data","image_differencing", "Raster_cell_count_per_zones.shp")) %>% 
+  st_transform(., 22770)
+
+# prepare the data
+# get the density
+
+density<-Raster_cell_count_per_zones%>%
+  #calculate area
+  mutate(area=st_area(.))%>%
+  #then density of the points per ward
+  mutate(density_raster=X_countfina/area)%>%
+  #select density and some other variables 
+  dplyr::select(density_raster, zone_numbe, Cadaster_1, X_countfina)
+
+
 tmap_mode("plot")
 breaks = c(4, 4.15, 4.3, 4.45, 4.6,4.75) 
 
@@ -38,6 +54,12 @@ density_map1
 
 
 ##### Kmean and CLARA silhouette analysis
+
+# get the silhouette coerfficient saved in the table earlier
+clustPerfSI<-
+  read.csv(here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"))
+
+clustPerfSI
 
 #call the table where the solhouette coefficeitn are stored
 
@@ -148,6 +170,17 @@ t1+t2+t3+t4+t5
 # Simple Bar Plot
 
 # prepare the data
+
+volun_circ_new_hist<-volun_circ_new %>% 
+  mutate(NGO = "The Volunteer Circle")
+mysay_new_hist<-mysay_new %>% 
+  mutate(NGO = "My Say")
+FrontLineEngineers_new_hist<-FrontLineEngineers_new %>% 
+  mutate(NGO = "Front Line Engineers")
+BebWShebek_new_hist<-BebWShebek_new %>% 
+  mutate(NGO = "BeB W Shebbek")
+Basecamp_new_hist<-Basecamp_new %>% 
+  mutate(NGO="Basecamp")
 
 combined_datasets_hist<- bind_rows(volun_circ_new_hist,
                               mysay_new_hist,
@@ -290,4 +323,3 @@ dm3_legend <- tm_shape(UN_habitat_shp) +
 
 density_map3=tmap_arrange(dm3,dm3_legend)
 density_map3
-
