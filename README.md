@@ -1,4 +1,4 @@
-# Beirut_explosion
+# Beirut_Explosion_Damage_Assessment
 
 This research aims to explore different approaches (point-based analysis on reported damages and SAR imagery change detection) 
 in performing a damage assessment that can guide the emergency response following the Beirut Port explosion that hit the capital on the 4th of August 2020.
