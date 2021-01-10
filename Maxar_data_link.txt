@@ -1,6 +1,7 @@
 below is a link for the large tiff files
 filed could not be pushed 
-
-file should be downloaded and so the R code can work properly
+step1: create a folder called "MAXAR_data"
+step2: add the folders "image_differencing" and "Raster tif before and after the blast" should be downloaded 
+step3: place the folders in"MAXAR_DATA" so the R code can work properly
 
 https://liveuclac-my.sharepoint.com/:f:/g/personal/ucfnmoa_ucl_ac_uk/EkPwdUSXOT5Oh6fNrVOPMLMBCP9d9etwG-Ko1BNCB6sCnA?e=3xLHV7 

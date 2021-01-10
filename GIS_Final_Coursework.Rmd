@@ -168,11 +168,15 @@ The code above won't be run as files are very large and takes ages to process, t
 
 I will be calling the saved outcome : stack_after_before_log.tif to perform further analysis and save processing time but below is the outcome! let's have a look at it!
 
-```{r message=FALSE, warning=FALSE}
-stack_after_before_log<-
-  stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
-# look at the result
-plotRGB(stack_after_before_log,axes=TRUE, stretch="lin")
+```{r message=FALSE, warning=FALSE, out.width= "0.5*paperwidth"}
+# stack_after_before_log<-
+#   stack(here::here("MAXAR_data","image_differencing","stack_after_before_log.tif"))
+# # look at the result
+# plotRGB(stack_after_before_log,axes=TRUE, stretch="lin")
+
+#the figure will be called as png as the files ar very large and they were not allowing the Rpubs publishing
+knitr::include_graphics(here::here("png","stack_after_before_log.png"))
+
 ```
 
 As the temporal difference is small, changes between before and after SAR images are assumed to be caused by the explosion, therefore, representing the damage.
@@ -182,51 +186,53 @@ Density Map per zone is generated, the raster::extract did not work as the file 
 the shapefile Raster_cell_count_per_zones.shp was created from QGIS through the zonal statistics plugin
 the image differencing tiff layer:  stack_after_before_log and the beirut operational zones shapefile were used 
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE,out.width= "0.5*paperwidth"}
 
-# get the shapefile
-Raster_cell_count_per_zones <- 
-  st_read(here::here("MAXAR_data","image_differencing", "Raster_cell_count_per_zones.shp")) %>% 
-  st_transform(., 22770)
+#  get the shapefile
+# Raster_cell_count_per_zones <- 
+#   st_read(here::here("MAXAR_data","image_differencing", "Raster_cell_count_per_zones.shp")) %>% 
+#   st_transform(., 22770)
+# 
+#  prepare the data
+#  get the density
+# 
+# density<-Raster_cell_count_per_zones%>%
+#   #calculate area
+#   mutate(area=st_area(.))%>%
+#   #then density of the points per ward
+#   mutate(density_raster=X_countfina/area)%>%
+#   #select density and some other variables 
+#   dplyr::select(density_raster, zone_numbe, Cadaster_1, X_countfina)
+# 
+# 
+# tmap_mode("plot")
+# breaks = c(4, 4.15, 4.3, 4.45, 4.6,4.75) 
+# 
+# dm1 <- tm_shape(density) + 
+#   tm_borders("white")+
+#   tm_polygons("density_raster",
+#               breaks=breaks,
+#               palette="-cividis",
+#               alpha = 0.7)+
+#   tm_scale_bar(position=c(0.01,0.1),text.size=0.5,color.dark = "grey46")+
+#   tm_compass(north=0, color.dark = "grey46",position=c("left","0.2"), size = 0.5)+
+#   tm_legend(show=FALSE)+
+#   tm_layout(title = "Damage assessment_SAR imagery based",title.size = 2,frame=FALSE)
+#   
+# 
+# dm1_legend <- tm_shape(density) +
+#   tm_polygons("density_raster",
+#               title = "Damage Density",
+#               breaks=breaks,
+#               palette="-cividis",
+#               alpha = 0.7,
+#               border.col = "white") +
+#   tm_layout(legend.only=TRUE, legend.title.size = 1,legend.position=c(0.01,0.25),asp=0.1)
+# 
+# density_map1=tmap_arrange(dm1,dm1_legend)
+# density_map1
 
-# prepare the data
-# get the density
-
-density<-Raster_cell_count_per_zones%>%
-  #calculate area
-  mutate(area=st_area(.))%>%
-  #then density of the points per ward
-  mutate(density_raster=X_countfina/area)%>%
-  #select density and some other variables 
-  dplyr::select(density_raster, zone_numbe, Cadaster_1, X_countfina)
-
-
-tmap_mode("plot")
-breaks = c(4, 4.15, 4.3, 4.45, 4.6,4.75) 
-
-dm1 <- tm_shape(density) + 
-  tm_borders("white")+
-  tm_polygons("density_raster",
-              breaks=breaks,
-              palette="-cividis",
-              alpha = 0.7)+
-  tm_scale_bar(position=c(0.01,0.1),text.size=0.5,color.dark = "grey46")+
-  tm_compass(north=0, color.dark = "grey46",position=c("left","0.2"), size = 0.5)+
-  tm_legend(show=FALSE)+
-  tm_layout(title = "Damage assessment_SAR imagery based",title.size = 2,frame=FALSE)
-  
-
-dm1_legend <- tm_shape(density) +
-  tm_polygons("density_raster",
-              title = "Damage Density",
-              breaks=breaks,
-              palette="-cividis",
-              alpha = 0.7,
-              border.col = "white") +
-  tm_layout(legend.only=TRUE, legend.title.size = 1,legend.position=c(0.01,0.25),asp=0.1)
-
-density_map1=tmap_arrange(dm1,dm1_legend)
-density_map1
+knitr::include_graphics(here::here("png","final sar density.png"))
 
 ```
 
@@ -368,33 +374,12 @@ The below is an attempt to classify the raster cells/pixels where we can possibl
 # save_silhouette<-
 #   write.csv(clustPerfSI, file = here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"), row.names = FALSE)
 # 
-# # print out a table with the silhouette index results for comparing each clustering solution:
-#   
-# silhouette_table<-
-#   knitr::kable(clustPerfSI, 
-#                digits = 3, align = "c", 
-#                col.names = c("#clusters","Avg. Silhouette (k-means)","Avg. Silhouette (CLARA)"))
-# 
-# silhouette_table
-# 
-# # make a plot for comparing the two algorithms
-# 
-# plot(clustPerfSI[,1], clustPerfSI[,2], 
-#      xlim = c(1,13), ylim = range(clustPerfSI[,2:3]), type = "n", 
-#      ylab="Avg. Silhouette Index", xlab="# of clusters",
-#      main="Silhouette index by # of clusters")
-# 
-# # Plot Avg Silhouette values across # of clusters for K-means
-# lines(clustPerfSI[,1], clustPerfSI[,2], col="red")
-# # Plot Avg Silhouette values across # of clusters for CLARA
-# lines(clustPerfSI[,1], clustPerfSI[,3], col="blue")
-# 
-# # Grid lines
-# abline(v = 1:13, lty=2, col="light grey")
-# abline(h = seq(0.30,0.44,0.02), lty=2, col="light grey")
-# 
-# legend("topright", legend=c("K-means","CLARA"), col=c("red","blue"), lty=1, lwd=1)
 
+# get the silhouette coerfficient saved in the table earlier
+clustPerfSI<-
+  read.csv(here::here("MAXAR_data","image_differencing","silhouette_clustPerfSI.csv"))
+
+clustPerfSI
 
 ```
 
@@ -445,45 +430,48 @@ the classification was interpreted through projecting the 3 clusters stak in QGI
 for example, severe damage can be easily classified as the port area damages were visible.
 
 
-```{r message=FALSE, warning=FALSE, fig.cap=" one classification layer projected on the real explosion shot"}
-knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
+```{r message=FALSE, warning=FALSE, fig.cap=" one classification layer projected on the real explosion shot" ,out.width= "0.3*paperwidth"}
+ knitr::include_graphics(here::here("MAXAR_data","image_differencing","kmeans_classification vs. real image.png"))
 
 ```
 
 Zooming on the port area
-```{r message=FALSE, warning=FALSE, fig.cap=" zooming in: one classification layer projected on the real explosion shot can indicate severe damage"}
-knitr::include_graphics(here::here("MAXAR_data","image_differencing","zoomed_kmeans_classification vs. real image.png"))
+```{r message=FALSE, warning=FALSE, fig.cap=" zooming in: one classification layer projected on the real explosion shot can indicate severe damage",out.width= "0.3*paperwidth"}
+# knitr::include_graphics(here::here("MAXAR_data","image_differencing","zoomed_kmeans_classification vs. real image.png"))
 
 ```
 
 
 Following the interpretation of the classification, below is a classified damage map
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE,out.width= "0.5*paperwidth"}
 ####let's plot the clustered result with 3 clusters 
 # file is already saved in the directory from the previous code
 # let's call it 
 
-rstKM<-
-  stack(here::here("MAXAR_data","image_differencing","raster_kmean.tif"))
+# rstKM<-
+#   stack(here::here("MAXAR_data","image_differencing","raster_kmean.tif"))
+# 
+# cuts=c(0,1,2,3) #set breaks
+# 
+# # plot reclassified data
+# plot(rstKM[[3]],
+#      legend = FALSE,
+#      col = c( "yellow", "navyblue","lightsteelblue4"), axes = FALSE,  
+#      main = "Classified Damage \n severe, medium, little to no damage",cex.main=1.2,box=FALSE)
+# 
+# legend("bottomleft",
+#        legend = c("severe damage","medium damage","little to no damage" ),
+#        fill = c("navyblue", "lightsteelblue4", "yellow"),
+#        border = FALSE,
+#        bty = "n",
+#        cex = 0.7) 
 
-cuts=c(0,1,2,3) #set breaks
+# a png will be displayed as code can be processed but cannot be published on Rpubs due to its size
 
-# plot reclassified data
-plot(rstKM[[3]],
-     legend = FALSE,
-     col = c( "yellow", "navyblue","lightsteelblue4"), axes = FALSE,  
-     main = "Classified Damage \n severe, medium, little to no damage",cex.main=1.2,box=FALSE)
+knitr::include_graphics(here::here("png","Rplot01zoom.png"))
 
-legend("bottomleft",
-       legend = c("severe damage","medium damage","little to no damage" ),
-       fill = c("navyblue", "lightsteelblue4", "yellow"),
-       border = FALSE,
-       bty = "n",
-       cex = 0.7) 
 ```
-
-
 
 
 
